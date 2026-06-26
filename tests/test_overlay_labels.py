@@ -309,10 +309,18 @@ def test_custom_cmap_is_accepted():
 
 
 def test_image_cmap_applied_to_grayscale():
-    """image_cmap is forwarded to imshow for a grayscale input."""
+    """Grayscale input defaults to 'gray' colormap when image_cmap is not set."""
     image, _mask, _df = make_synthetic_data()
-    fig, ax = overlay_labels(image, image_cmap="gray", show=False)
+    fig, ax = overlay_labels(image, show=False)
     assert ax.images[0].cmap.name == "gray"
+    plt.close(fig)
+
+
+def test_image_cmap_override_for_grayscale():
+    """image_cmap overrides the 'gray' default for grayscale input."""
+    image, _mask, _df = make_synthetic_data()
+    fig, ax = overlay_labels(image, image_cmap="hot", show=False)
+    assert ax.images[0].cmap.name == "hot"
     plt.close(fig)
 
 

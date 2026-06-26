@@ -257,8 +257,8 @@ def overlay_labels(
         Overlay opacity (0 = transparent, 1 = opaque). By default, 0.3.
     image_cmap : str or None
         Colormap for the base image. Only applies to single grayscale ``(H, W)``
-        input; ignored for RGB arrays and multi-channel lists. Pass ``"gray"``
-        for a conventional monochrome look.
+        input; ignored for RGB arrays and multi-channel lists. Defaults to
+        ``"gray"`` for grayscale input.
     mask_cmap : str or None
         Colormap for the label overlay. Defaults: categorical ``"tab10"``,
         continuous ``"viridis"``.
@@ -308,7 +308,7 @@ def overlay_labels(
         img_display = (img_display - img_display.min()) / (
             img_display.max() - img_display.min() + 1e-8
         )
-        _image_cmap = image_cmap if img_display.ndim == 2 else None
+        _image_cmap = (image_cmap or "gray") if img_display.ndim == 2 else None
     else:
         img_display = None
         _image_cmap = None
