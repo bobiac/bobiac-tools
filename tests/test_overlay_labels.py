@@ -20,8 +20,12 @@ from matplotlib.figure import Figure
 
 from bobiac_tools import overlay_labels
 from bobiac_tools._overlay_labels import (
+    _apply_crop,
     _categorical_palette,
+    _compute_crop,
     _is_categorical,
+    _offset_coordinates,
+    _plot_coordinates,
     _stack_channels,
 )
 
@@ -289,7 +293,7 @@ def test_continuous_respects_vmin_vmax():
 
 
 def test_custom_cmap_is_accepted():
-    """A custom continuous colormap is accepted."""
+    """A custom continuous mask_cmap is accepted."""
     image, mask, df = make_synthetic_data()
     fig, _ax = overlay_labels(
         image,
@@ -297,10 +301,36 @@ def test_custom_cmap_is_accepted():
         df,
         id_col="label",
         measurement_col="value",
-        cmap="plasma",
+        mask_cmap="plasma",
         show=False,
     )
     assert isinstance(fig, Figure)
+    plt.close(fig)
+
+
+def test_image_cmap_applied_to_grayscale():
+    """image_cmap is forwarded to imshow for a grayscale input."""
+    image, _mask, _df = make_synthetic_data()
+    fig, ax = overlay_labels(image, image_cmap="gray", show=False)
+    assert ax.images[0].cmap.name == "gray"
+    plt.close(fig)
+
+
+def test_image_cmap_ignored_for_rgb():
+    """image_cmap has no effect when the input is already an RGB array."""
+    rgb = np.random.default_rng(1).random((6, 6, 3))
+    fig, ax = overlay_labels(rgb, image_cmap="gray", show=False)
+    # imshow receives None for cmap on RGB input; matplotlib uses its default
+    assert ax.images[0].cmap.name != "gray"
+    plt.close(fig)
+
+
+def test_image_cmap_ignored_for_list_input():
+    """image_cmap has no effect when a list of channels is passed (already RGB)."""
+    rng = np.random.default_rng(2)
+    ch0, ch1 = rng.random((6, 6)), rng.random((6, 6))
+    fig, ax = overlay_labels([ch0, ch1], image_cmap="hot", show=False)
+    assert ax.images[0].cmap.name != "hot"
     plt.close(fig)
 
 
@@ -308,12 +338,16 @@ def test_custom_cmap_is_accepted():
 # _stack_channels helper
 # --------------------------------------------------------------------------- #
 def test_stack_channels_two_channels():
-    """Two (H, W) arrays are stacked into an (H, W, 3) RGB image."""
-    ch0 = np.zeros((4, 4))
-    ch1 = np.ones((4, 4))
+    """Two channels are composited with red + cyan semantic colors."""
+    # ch0 has content → red (1,0,0); ch1 is constant (normalizes to zero)
+    ch0 = np.linspace(0.0, 1.0, 16).reshape(4, 4)
+    ch1 = np.zeros((4, 4))
     rgb = _stack_channels([ch0, ch1])
     assert rgb.shape == (4, 4, 3)
-    assert rgb[..., 2].max() == 0.0  # third channel is empty
+    # ch0 maps to red channel only; ch1 is constant → zero contribution
+    assert rgb[..., 0].max() == pytest.approx(1.0)  # red from ch0
+    assert rgb[..., 1].max() == pytest.approx(0.0)  # no green
+    assert rgb[..., 2].max() == pytest.approx(0.0)  # no blue
 
 
 def test_stack_channels_three_channels():
@@ -416,6 +450,194 @@ def test_show_on_image_only_path():
     with patch.object(plt, "show") as mock_show:
         fig, _ax = overlay_labels(image)
     assert mock_show.call_count == 1
+    plt.close(fig)
+
+
+# --------------------------------------------------------------------------- #
+# overlay_labels: image=None and validation
+# --------------------------------------------------------------------------- #
+def test_both_none_raises():
+    """Passing both image=None and label_mask=None raises ValueError."""
+    with pytest.raises(ValueError, match="At least one"):
+        overlay_labels(show=False)
+
+
+def test_image_none_single_mask():
+    """image=None renders a black canvas under the mask overlay."""
+    _image, mask, _df = make_synthetic_data()
+    fig, ax = overlay_labels(label_mask=mask, show=False)
+    assert isinstance(fig, Figure)
+    assert len(ax.images) == 2  # black canvas + overlay
+    plt.close(fig)
+
+
+def test_image_none_list_masks():
+    """image=None with a list of masks renders without a background image."""
+    _image, mask, _df = make_synthetic_data()
+    fig, ax = overlay_labels(label_mask=[mask, mask], show=False)
+    assert isinstance(fig, Figure)
+    assert len(ax.images) == 2
+    plt.close(fig)
+
+
+# --------------------------------------------------------------------------- #
+# overlay_labels: 3D (C, H, W) input normalization
+# --------------------------------------------------------------------------- #
+def test_3d_image_is_normalized_to_channels():
+    """A (C, H, W) array with C ≤ 3 is composited as multi-channel input."""
+    rng = np.random.default_rng(0)
+    vol = rng.random((2, 6, 6))  # shape[0]=2 ≤ 3 → treated as 2 channels
+    fig, ax = overlay_labels(vol, show=False)
+    assert isinstance(fig, Figure)
+    assert ax.images[0].get_array().shape == (6, 6, 3)
+    plt.close(fig)
+
+
+def test_rgb_image_not_split_into_channels():
+    """An (H, W, 3) RGB array is NOT split (shape[0]=H > 3)."""
+    rgb = np.random.default_rng(1).random((6, 6, 3))
+    fig, ax = overlay_labels(rgb, show=False)
+    # Image was treated as a single (H,W,3) RGB array, not 6 separate channels
+    assert isinstance(fig, Figure)
+    plt.close(fig)
+
+
+def test_3d_label_mask_is_split_to_list():
+    """A (C, H, W) label mask with C ≤ 3 is treated as a list of masks."""
+    image, mask, _df = make_synthetic_data()
+    masks_3d = np.stack([mask, mask], axis=0)  # shape (2, 6, 6)
+    fig, ax = overlay_labels(image, label_mask=masks_3d, show=False)
+    assert isinstance(fig, Figure)
+    assert len(ax.images) == 2  # background + multi-mask overlay
+    plt.close(fig)
+
+
+# --------------------------------------------------------------------------- #
+# overlay_labels: list of masks
+# --------------------------------------------------------------------------- #
+def test_list_of_masks_produces_colored_overlay():
+    """A list of two masks produces two distinct overlay colors."""
+    image, mask, _df = make_synthetic_data()
+    mask2 = np.zeros_like(mask)
+    mask2[4:6, 4:6] = 1
+    fig, ax = overlay_labels(image, label_mask=[mask, mask2], show=False)
+    assert len(ax.images) == 2
+    plt.close(fig)
+
+
+def test_list_of_masks_no_legend_or_colorbar():
+    """The multi-mask path adds no legend and no colorbar."""
+    image, mask, _df = make_synthetic_data()
+    fig, ax = overlay_labels(image, label_mask=[mask, mask], show=False)
+    assert ax.get_legend() is None
+    assert len(fig.axes) == 1
+    plt.close(fig)
+
+
+# --------------------------------------------------------------------------- #
+# _compute_crop / _apply_crop / _offset_coordinates helpers
+# --------------------------------------------------------------------------- #
+def test_compute_crop_finds_object():
+    """_compute_crop returns a bounding box containing the requested object."""
+    mask = np.zeros((20, 20), dtype=int)
+    mask[5:10, 8:12] = 42
+    crop = _compute_crop(mask, 42)
+    assert crop is not None
+    y0, y1, x0, x1 = crop
+    # argwhere gives pixel coordinates; max row is 9, max col is 11 (0-indexed)
+    assert y0 <= 5 and y1 >= 9
+    assert x0 <= 8 and x1 >= 11
+
+
+def test_compute_crop_missing_object_returns_none():
+    """_compute_crop returns None when the object is absent."""
+    mask = np.zeros((10, 10), dtype=int)
+    assert _compute_crop(mask, 99) is None
+
+
+def test_apply_crop_slices_array():
+    """_apply_crop slices a 2-D array to the crop region."""
+    arr = np.arange(25).reshape(5, 5)
+    result = _apply_crop(arr, (1, 4, 1, 4))
+    assert result.shape == (3, 3)
+    assert result[0, 0] == arr[1, 1]
+
+
+def test_apply_crop_none_passthrough():
+    """_apply_crop returns None when arr is None."""
+    assert _apply_crop(None, (0, 2, 0, 2)) is None
+
+
+def test_offset_coordinates_array():
+    """Points outside the crop are removed; remaining ones are shifted."""
+    coords = np.array([[2.0, 3.0], [10.0, 10.0]])  # second point outside crop
+    result = _offset_coordinates(coords, (0, 5, 0, 5))
+    result = np.asarray(result)
+    assert len(result) == 1
+    assert result[0, 0] == pytest.approx(2.0)
+    assert result[0, 1] == pytest.approx(3.0)
+
+
+def test_offset_coordinates_dataframe():
+    """DataFrame coordinates are filtered and shifted to the crop frame."""
+    df = pd.DataFrame({"x": [2.0, 8.0], "y": [3.0, 1.0]})
+    result = _offset_coordinates(df, (0, 5, 0, 5))
+    assert isinstance(result, pd.DataFrame)
+    assert len(result) == 1  # (x=8) is outside crop x<5
+    assert result["x"].iloc[0] == pytest.approx(2.0)
+
+
+# --------------------------------------------------------------------------- #
+# overlay_labels: coordinates parameter
+# --------------------------------------------------------------------------- #
+def test_coordinates_array_scattered():
+    """A plain (N,2) coordinate array adds scatter points to the axes."""
+    image, _mask, _df = make_synthetic_data()
+    coords = np.array([[1.0, 2.0], [3.0, 4.0]])
+    fig, ax = overlay_labels(image, coordinates=coords, show=False)
+    assert len(ax.collections) == 1
+    plt.close(fig)
+
+
+def test_coordinates_dataframe_scattered():
+    """A DataFrame with x/y columns adds scatter points."""
+    image, _mask, _df = make_synthetic_data()
+    df_coords = pd.DataFrame({"x": [1.0, 2.0], "y": [3.0, 4.0]})
+    fig, ax = overlay_labels(image, coordinates=df_coords, show=False)
+    assert len(ax.collections) == 1
+    plt.close(fig)
+
+
+def test_coordinates_dataframe_with_channel_adds_legend():
+    """A DataFrame with a 'channel' column produces one scatter per channel + legend."""
+    image, _mask, _df = make_synthetic_data()
+    df_coords = pd.DataFrame({"x": [1.0, 2.0], "y": [3.0, 4.0], "channel": [0, 1]})
+    fig, ax = overlay_labels(image, coordinates=df_coords, show=False)
+    assert ax.get_legend() is not None
+    assert len(ax.collections) == 2  # one scatter per channel
+    plt.close(fig)
+
+
+# --------------------------------------------------------------------------- #
+# overlay_labels: focus_object
+# --------------------------------------------------------------------------- #
+def test_focus_object_crops_figure():
+    """focus_object adjusts figsize to match the object's crop aspect ratio."""
+    rng = np.random.default_rng(0)
+    image = rng.random((20, 20))
+    mask = np.zeros((20, 20), dtype=int)
+    mask[2:4, 2:10] = 7  # wide rectangle → w_px > h_px → figsize changes
+    fig_crop, _ = overlay_labels(image, mask, focus_object=7, show=False)
+    w, h = fig_crop.get_size_inches()
+    assert w != pytest.approx(h, abs=0.1)  # aspect ratio is not 1:1
+    plt.close("all")
+
+
+def test_focus_object_missing_uses_full_image():
+    """focus_object with an absent ID falls back to the full image (crop=None)."""
+    image, mask, _df = make_synthetic_data()
+    fig, ax = overlay_labels(image, mask, focus_object=999, show=False)
+    assert fig.get_size_inches().tolist() == [8.0, 8.0]
     plt.close(fig)
 
 
