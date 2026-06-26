@@ -19,7 +19,11 @@ from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 
 from bobiac_tools import overlay_labels
-from bobiac_tools._overlay_labels import _categorical_palette, _is_categorical
+from bobiac_tools._overlay_labels import (
+    _categorical_palette,
+    _is_categorical,
+    _stack_channels,
+)
 
 # overlay_labels shows by default; Agg has no GUI, so render off-screen.
 plt.switch_backend("Agg")
@@ -298,6 +302,87 @@ def test_custom_cmap_is_accepted():
     )
     assert isinstance(fig, Figure)
     plt.close(fig)
+
+
+# --------------------------------------------------------------------------- #
+# _stack_channels helper
+# --------------------------------------------------------------------------- #
+def test_stack_channels_two_channels():
+    """Two (H, W) arrays are stacked into an (H, W, 3) RGB image."""
+    ch0 = np.zeros((4, 4))
+    ch1 = np.ones((4, 4))
+    rgb = _stack_channels([ch0, ch1])
+    assert rgb.shape == (4, 4, 3)
+    assert rgb[..., 2].max() == 0.0  # third channel is empty
+
+
+def test_stack_channels_three_channels():
+    """Three (H, W) arrays fill all three RGB planes."""
+    rng = np.random.default_rng(0)
+    channels = [rng.random((4, 4)) for _ in range(3)]
+    rgb = _stack_channels(channels)
+    assert rgb.shape == (4, 4, 3)
+
+
+def test_stack_channels_normalizes_each_independently():
+    """Each channel is normalized to [0, 1] independently."""
+    ch0 = np.full((4, 4), 100.0)
+    ch0[0, 0] = 200.0
+    ch1 = np.full((4, 4), 1.0)
+    ch1[0, 0] = 2.0
+    rgb = _stack_channels([ch0, ch1])
+    assert rgb[..., 0].max() == pytest.approx(1.0)
+    assert rgb[..., 1].max() == pytest.approx(1.0)
+
+
+def test_stack_channels_raises_for_more_than_three():
+    """Passing more than 3 channels raises a ValueError."""
+    ch = np.zeros((4, 4))
+    with pytest.raises(ValueError, match="At most 3 channels"):
+        _stack_channels([ch, ch, ch, ch])
+
+
+# --------------------------------------------------------------------------- #
+# overlay_labels: list-of-channels input
+# --------------------------------------------------------------------------- #
+def test_list_of_two_channels_accepted():
+    """A list of two grayscale arrays is accepted and displayed as RGB."""
+    rng = np.random.default_rng(1)
+    ch0 = rng.random((6, 6))
+    ch1 = rng.random((6, 6))
+    fig, ax = overlay_labels([ch0, ch1], show=False)
+    assert isinstance(fig, Figure)
+    assert len(ax.images) == 1
+    assert ax.images[0].get_array().shape == (6, 6, 3)
+    plt.close(fig)
+
+
+def test_list_of_three_channels_accepted():
+    """A list of three grayscale arrays is accepted."""
+    rng = np.random.default_rng(2)
+    channels = [rng.random((6, 6)) for _ in range(3)]
+    fig, ax = overlay_labels(channels, show=False)
+    assert isinstance(fig, Figure)
+    plt.close(fig)
+
+
+def test_list_input_with_label_mask():
+    """A list of channels can be combined with a label_mask overlay."""
+    rng = np.random.default_rng(3)
+    ch0 = rng.random((6, 6))
+    ch1 = rng.random((6, 6))
+    mask = np.zeros((6, 6), dtype=int)
+    mask[0:2, 0:2] = 1
+    fig, ax = overlay_labels([ch0, ch1], label_mask=mask, show=False)
+    assert len(ax.images) == 2  # base image + overlay
+    plt.close(fig)
+
+
+def test_list_of_four_channels_raises():
+    """Passing a list of 4 channels raises a ValueError."""
+    ch = np.zeros((6, 6))
+    with pytest.raises(ValueError, match="At most 3 channels"):
+        overlay_labels([ch, ch, ch, ch], show=False)
 
 
 # --------------------------------------------------------------------------- #

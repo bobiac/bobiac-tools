@@ -40,8 +40,31 @@ def _categorical_palette(cmap: str, n_categories: int) -> list:
     return [colormap(i / (n_categories - 1)) for i in range(n_categories)]
 
 
+def _stack_channels(channels: list[np.ndarray]) -> np.ndarray:
+    """Normalize up to 3 single-channel 2-D arrays and stack into an (H, W, 3) image.
+
+    Each channel is normalized independently to [0, 1] and placed into the R, G,
+    B planes in order; absent planes are filled with zeros.
+
+    Raises
+    ------
+    ValueError
+        If more than 3 channels are supplied.
+    """
+    if len(channels) > 3:
+        raise ValueError(
+            f"At most 3 channels are supported when passing a list, got {len(channels)}"
+        )
+    h, w = channels[0].shape
+    rgb = np.zeros((h, w, 3), dtype=float)
+    for i, ch in enumerate(channels):
+        ch = ch.astype(float)
+        rgb[..., i] = (ch - ch.min()) / (ch.max() - ch.min() + 1e-8)
+    return rgb
+
+
 def overlay_labels(
-    image: np.ndarray,
+    image: np.ndarray | list[np.ndarray],
     label_mask: np.ndarray | None = None,
     df: pd.DataFrame | None = None,
     id_col: str | None = None,
@@ -58,8 +81,10 @@ def overlay_labels(
 
     Parameters
     ----------
-    image : np.ndarray
-        Grayscale `(H, W)` or RGB `(H, W, 3)` image.
+    image : np.ndarray or list of np.ndarray
+        Grayscale `(H, W)`, RGB `(H, W, 3)` image, or a list of up to 3
+        grayscale `(H, W)` arrays treated as individual color channels (R, G,
+        B in order). Each channel is normalized independently.
     label_mask : np.ndarray or None
         Integer array where each cell has a unique ID; background is 0. If None,
         only the image is shown.
@@ -91,13 +116,16 @@ def overlay_labels(
     tuple[Figure, Axes]
         The matplotlib figure and axes the overlay was drawn on.
     """
-    # --- normalize image to [0, 1] for display ---
-    img_display = image.astype(float)
-    img_display = (img_display - img_display.min()) / (
-        img_display.max() - img_display.min() + 1e-8
-    )
-    if img_display.ndim == 2:
-        img_display = np.stack([img_display] * 3, axis=-1)
+    # --- build display image ---
+    if isinstance(image, list):
+        img_display = _stack_channels(image)
+    else:
+        img_display = image.astype(float)
+        img_display = (img_display - img_display.min()) / (
+            img_display.max() - img_display.min() + 1e-8
+        )
+        if img_display.ndim == 2:
+            img_display = np.stack([img_display] * 3, axis=-1)
 
     # --- no overlay: just show the image ---
     if label_mask is None:
