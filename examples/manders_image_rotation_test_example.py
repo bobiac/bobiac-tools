@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from coloc_tools import manders_image_rotation_test
+from bobiac_tools import manders_image_rotation_test
 
 # Generate random synthetic image data
 np.random.seed(42)

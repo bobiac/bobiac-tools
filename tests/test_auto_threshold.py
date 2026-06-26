@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from coloc_tools import (
+from bobiac_tools import (
     AutoThresholdRegression,
     Implementation,
     fiji_bisection_auto_threshold,

@@ -1,4 +1,4 @@
-"""Coloc Tools - Tools for colocalization analysis."""
+"""Bobiac Tools - Tools for colocalization analysis."""
 
 from __future__ import annotations
 

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from coloc_tools import manders_correlation_coefficient
+from bobiac_tools import manders_correlation_coefficient
 
 # Generate random synthetic image data
 np.random.seed(42)

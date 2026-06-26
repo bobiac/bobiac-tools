@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from coloc_tools import (
+from bobiac_tools import (
     fiji_bisection_auto_threshold,
     fiji_costes_auto_threshold,
     pca_auto_threshold,

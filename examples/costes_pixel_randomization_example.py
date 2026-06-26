@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from coloc_tools import pixel_randomization
+from bobiac_tools import pixel_randomization
 
 # Generate random synthetic image data
 np.random.seed(42)

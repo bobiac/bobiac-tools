@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from coloc_tools import manders_image_translation_randomization
+from bobiac_tools import manders_image_translation_randomization
 
 # Generate random synthetic image data
 np.random.seed(42)

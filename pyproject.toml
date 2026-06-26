@@ -6,13 +6,13 @@ build-backend = "hatchling.build"
 include = ["/src"]
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/coloc_tools"]
+packages = ["src/bobiac_tools"]
 
 [tool.hatch.metadata]
 allow-direct-references = true
 
 [project]
-name = "coloc-tools"
+name = "bobiac-tools"
 version = "0.1.0"
 description = "Python tools for colocalization analysis."
 readme = "README.md"
@@ -52,9 +52,9 @@ test = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/fdrgsp/coloc_tools"
-Repository = "https://github.com/fdrgsp/coloc_tools"
-Issues = "https://github.com/fdrgsp/coloc_tools/issues"
+Homepage = "https://github.com/bobiac/bobiac-tools"
+Repository = "https://github.com/bobiac/bobiac-tools"
+Issues = "https://github.com/bobiac/bobiac-tools/issues"
 
 [tool.ruff]
 line-length = 88
@@ -107,10 +107,10 @@ filterwarnings = [
 ]
 
 [tool.coverage.paths]
-source = ["src/coloc_tools"]
+source = ["src/bobiac_tools"]
 
 [tool.coverage.run]
-source = ["coloc_tools"]
+source = ["bobiac_tools"]
 
 [tool.check-manifest]
 ignore = [

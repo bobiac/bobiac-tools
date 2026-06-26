@@ -1,4 +1,4 @@
-"""Test imports for all modules in the coloc_tools package."""
+"""Test imports for all modules in the bobiac_tools package."""
 
 from __future__ import annotations
 
@@ -8,16 +8,16 @@ import sys
 def test_all_package_functions():
     """Test that all functions defined in __all__ can be imported and are callable."""
     try:
-        import coloc_tools
+        import bobiac_tools
 
         # Ensure the package has __all__ defined
-        assert hasattr(coloc_tools, "__all__"), "Package should define __all__"
-        assert len(coloc_tools.__all__) > 0, "Package __all__ should not be empty"
+        assert hasattr(bobiac_tools, "__all__"), "Package should define __all__"
+        assert len(bobiac_tools.__all__) > 0, "Package __all__ should not be empty"
 
         # Test each function in __all__
-        for func_name in coloc_tools.__all__:
+        for func_name in bobiac_tools.__all__:
             # Get the function from the package
-            func = getattr(coloc_tools, func_name, None)
+            func = getattr(bobiac_tools, func_name, None)
 
             # Verify it exists
             assert func is not None, (
@@ -32,7 +32,7 @@ def test_all_package_functions():
             print(f"✓ Successfully imported and verified: {func_name}")
 
     except ImportError as e:
-        raise AssertionError(f"Failed to import coloc_tools package: {e}") from e
+        raise AssertionError(f"Failed to import bobiac_tools package: {e}") from e
 
 
 def test_package_dependencies():
