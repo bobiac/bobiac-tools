@@ -175,10 +175,10 @@ def test_pca_symmetry():
     ch1, ch2 = create_synthetic_test_data()
 
     # Test original order
-    ch1_thr1, ch2_thr1, slope1, intercept1 = pca_auto_threshold(ch1, ch2)
+    ch1_thr1, ch2_thr1, _slope1, _intercept1 = pca_auto_threshold(ch1, ch2)
 
     # Test swapped order
-    ch2_thr2, ch1_thr2, slope2, intercept2 = pca_auto_threshold(ch2, ch1)
+    ch2_thr2, ch1_thr2, _slope2, _intercept2 = pca_auto_threshold(ch2, ch1)
 
     # Thresholds should be swapped but otherwise identical
     assert np.isclose(ch1_thr1, ch1_thr2, rtol=1e-6), (
@@ -235,9 +235,11 @@ def test_auto_threshold_comparison():
     ch1, ch2 = create_synthetic_test_data()
 
     # Run all three methods
-    ch1_cos, ch2_cos, slope_cos, intercept_cos = fiji_costes_auto_threshold(ch1, ch2)
-    ch1_bic, ch2_bic, slope_bic, intercept_bic = fiji_bisection_auto_threshold(ch1, ch2)
-    ch1_pca, ch2_pca, slope_pca, intercept_pca = pca_auto_threshold(ch1, ch2)
+    ch1_cos, ch2_cos, _slope_cos, _intercept_cos = fiji_costes_auto_threshold(ch1, ch2)
+    ch1_bic, ch2_bic, _slope_bic, _intercept_bic = fiji_bisection_auto_threshold(
+        ch1, ch2
+    )
+    ch1_pca, ch2_pca, _slope_pca, _intercept_pca = pca_auto_threshold(ch1, ch2)
 
     # All methods should produce reasonable results (not too far apart)
     # This is a loose check - methods may differ but shouldn't be wildly different

@@ -20,6 +20,7 @@ from ._manders_image_rotation_test import (
     manders_image_rotation_test_plot,
 )
 from ._manders_image_translation_test import manders_image_translation_randomization
+from ._overlay_labels import overlay_labels
 from ._pixel_randomization import pixel_randomization
 
 __all__ = [
@@ -34,6 +35,7 @@ __all__ = [
     "manders_image_rotation_test",
     "manders_image_rotation_test_plot",
     "manders_image_translation_randomization",
+    "overlay_labels",
     "pca_auto_threshold",
     "pixel_randomization",
 ]
