@@ -161,7 +161,7 @@ def manders_image_rotation_test_plot(
     p_value_m2 : float
         P-value for M2 (fraction of rotation M2 >= observed M2)
     """
-    fig, ax = plt.subplots(1, 1, figsize=(10, 6))
+    _fig, ax = plt.subplots(1, 1, figsize=(10, 6))
 
     # Add 0° (raw) data at the beginning
     transformations_names = [

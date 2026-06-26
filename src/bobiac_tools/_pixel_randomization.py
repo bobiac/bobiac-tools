@@ -59,7 +59,7 @@ def pixel_randomization(
 
         if images_to_display is not None and i in images_to_display:
             # show original and randomized channel
-            fig, ax = plt.subplots(1, 2, figsize=(10, 5))
+            _fig, ax = plt.subplots(1, 2, figsize=(10, 5))
             ax[0].imshow(channel_2, cmap="gray")
             ax[0].set_title("Original Channel 2")
             ax[0].axis("off")
