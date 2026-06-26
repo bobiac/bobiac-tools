@@ -24,9 +24,9 @@ def manders_correlation_coefficient(
     Parameters
     ----------
     ch1 : np.ndarray
-        First fluorescent channel (kept fixed)
+        First fluorescent channel
     ch2 : np.ndarray
-        Second fluorescent channel (will be rotated and flipped)
+        Second fluorescent channel
     threshold_ch1 : float
         Intensity threshold for channel 1
     threshold_ch2 : float
@@ -53,4 +53,4 @@ def manders_correlation_coefficient(
     m2_denominator = np.sum(ch2[mask_b])
     m2 = m2_numerator / m2_denominator if m2_denominator > 0 else 0.0
 
-    return m1, m2
+    return float(m1), float(m2)

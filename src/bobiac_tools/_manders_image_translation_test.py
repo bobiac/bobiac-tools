@@ -28,9 +28,9 @@ def manders_image_translation_randomization(
     channel_2 : np.ndarray
         Second fluorescent channel (will be translated)
     threshold_ch1 : float, optional
-        Intensity threshold for channel A (if None, uses Otsu's method)
+        Intensity threshold for channel 1. By default, 0.0.
     threshold_ch2 : float, optional
-        Intensity threshold for channel B (if None, uses Otsu's method)
+        Intensity threshold for channel 2. By default, 0.0.
     n_iterations : int
         Number of randomization iterations (default: 1000)
     max_shift_fraction : float
@@ -48,8 +48,8 @@ def manders_image_translation_randomization(
         - float: P-value for M1 (fraction of random M1 >= observed M1)
         - float: P-value for M2 (fraction of random M2 >= observed M2)
     """
-    # Set numpy random seed for reproducibility
-    np.random.seed(seed)
+    # Dedicated random generator for reproducibility (no global RNG side effects)
+    rng = np.random.default_rng(seed)
 
     def _translate_image(image: np.ndarray, shift_y: int, shift_x: int) -> np.ndarray:
         """Translate image by given shifts with wrap-around."""
@@ -71,12 +71,12 @@ def manders_image_translation_randomization(
     # for _ in tqdm(range(n_iterations), desc="Image translation randomization"):
     for _ in range(n_iterations):
         # Generate random shifts (excluding zero shift)
-        shift_y = np.random.randint(-max_shift_y, max_shift_y + 1)
-        shift_x = np.random.randint(-max_shift_x, max_shift_x + 1)
+        shift_y = int(rng.integers(-max_shift_y, max_shift_y + 1))
+        shift_x = int(rng.integers(-max_shift_x, max_shift_x + 1))
 
         # Ensure at least one shift is non-zero
         if shift_y == 0 and shift_x == 0:
-            shift_y = np.random.choice([-1, 1])
+            shift_y = int(rng.choice([-1, 1]))
 
         # Apply translation to channel B
         translated_ch2 = _translate_image(channel_2, shift_y, shift_x)

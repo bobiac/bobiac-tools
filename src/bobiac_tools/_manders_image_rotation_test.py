@@ -226,11 +226,7 @@ def manders_image_rotation_test_plot(
         f"M2 p-value: {p_value_m2:.4f})"
     )
     ax.set_xticks(transformation_indices)
-    ax.set_xticklabels(
-        [name.replace(" + ", "\n+ ") for name in transformations_names],
-        ha="center",
-        fontsize=8,
-    )
+    ax.set_xticklabels(transformations_names, ha="center", fontsize=8)
     ax.legend()
     ax.grid(True, alpha=0.3)
 

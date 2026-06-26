@@ -35,27 +35,22 @@ def pixel_randomization(
         - List[float]: Correlation coefficients from randomized iterations
         - float: P-value (fraction of random correlations >= observed)
     """
-    # Set the numpy random seed for reproducibility
-    np.random.seed(seed)
+    # Dedicated random generator for reproducibility (no global RNG side effects)
+    rng = np.random.default_rng(seed)
+
+    # Flatten channel 1 once; it is reused for every correlation
+    ch1_flat = channel_1.ravel()
+    shape = channel_2.shape
 
     # Calculate observed correlation
-    observed_correlation = np.corrcoef(channel_1.ravel(), channel_2.ravel())[0, 1]
+    observed_correlation = float(np.corrcoef(ch1_flat, channel_2.ravel())[0, 1])
 
     # Initialize list to store randomized correlations
     random_correlations = []
 
-    # Store original shape for reshaping
-    shape = channel_2.shape
-
-    # for _ in tqdm(range(n_iterations), desc="Costes pixel randomization"):
     for i in range(n_iterations):
-        # Flatten, shuffle, and reshape
-        randomized_channel_2 = np.random.permutation(channel_2.ravel()).reshape(shape)
-
-        # assert sorted values in randomized_channel_2 are the same as in channel_2
-        assert np.array_equal(
-            np.sort(randomized_channel_2.ravel()), np.sort(channel_2.ravel())
-        ), "Randomized channel values do not match original channel values"
+        # Flatten, shuffle, and reshape (permutation preserves the value set)
+        randomized_channel_2 = rng.permutation(channel_2.ravel()).reshape(shape)
 
         if images_to_display is not None and i in images_to_display:
             # show original and randomized channel
@@ -69,13 +64,11 @@ def pixel_randomization(
             plt.show()
 
         # Calculate correlation with randomized channel
-        random_corr = float(
-            np.corrcoef(channel_1.ravel(), randomized_channel_2.ravel())[0, 1]
-        )
+        random_corr = float(np.corrcoef(ch1_flat, randomized_channel_2.ravel())[0, 1])
         random_correlations.append(random_corr)
 
     # Calculate p-value: fraction of random correlations >= observed correlation
-    p_value = (
+    p_value = float(
         np.sum(np.array(random_correlations) >= observed_correlation) / n_iterations
     )
 

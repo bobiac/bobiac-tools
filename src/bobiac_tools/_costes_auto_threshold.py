@@ -171,6 +171,12 @@ class PCAStepper(Stepper):
             self.finished = True
             self.best_ch1_threshold = 0
             self.best_ch2_threshold = 0
+            # Set the iteration state so is_finished()/get_current_thresholds()
+            # stay safe to call on degenerate (no valid pixels) input.
+            self.current_index = 0
+            self.t_values = np.array([])
+            self.current_ch1_threshold = 0
+            self.current_ch2_threshold = 0
             return
 
         # Initialize iteration variables first
@@ -369,7 +375,10 @@ class AutoThresholdRegression:
 
         Uses NumPy's correlation function for efficient calculation.
         """
-        # Create mask for pixels below thresholds
+        # Create mask for pixels below thresholds. NOTE: the Costes/bisection
+        # methods treat a pixel as "below" if *either* channel is below its
+        # threshold (OR), matching FIJI; the PCA path instead requires *both*
+        # channels below (AND).
         mask = (ch1 < threshold_ch1) | (ch2 < threshold_ch2)
 
         if not np.any(mask):
@@ -406,42 +415,24 @@ class AutoThresholdRegression:
     def _calculate_regression_parameters(
         self, ch1_flat: np.ndarray, ch2_flat: np.ndarray
     ) -> tuple[float, float, float, float]:
-        """Calculate regression parameters using EXACT FIJI calculation."""
+        """Calculate regression parameters (vectorized FIJI calculation).
+
+        This is the vectorized equivalent of FIJI's per-pixel variance loop; the
+        sample variances (``ddof=1``) and the covariance derived from
+        ``var(x + y) = var(x) + var(y) + 2*cov(x, y)`` are identical.
+        """
+        # Work in float to avoid integer overflow on the squared sums
+        ch1_flat = ch1_flat.astype(float)
+        ch2_flat = ch2_flat.astype(float)
+
         # Calculate means
-        ch1_mean = np.mean(ch1_flat)
-        ch2_mean = np.mean(ch2_flat)
-        combined_mean = ch1_mean + ch2_mean
+        ch1_mean = float(np.mean(ch1_flat))
+        ch2_mean = float(np.mean(ch2_flat))
 
-        # Variables for summing up - EXACT FIJI style
-        ch1_mean_diff_sum = 0.0
-        ch2_mean_diff_sum = 0.0
-        combined_mean_diff_sum = 0.0
-        n = 0
-        n_zero = 0
-
-        # Iterate through all pixels - EXACT FIJI loop
-        for i in range(len(ch1_flat)):
-            ch1_val = float(ch1_flat[i])
-            ch2_val = float(ch2_flat[i])
-            combined_sum = ch1_val + ch2_val
-
-            # Calculate the numerators for the variances
-            ch1_mean_diff_sum += (ch1_val - ch1_mean) * (ch1_val - ch1_mean)
-            ch2_mean_diff_sum += (ch2_val - ch2_mean) * (ch2_val - ch2_mean)
-            combined_mean_diff_sum += (combined_sum - combined_mean) * (
-                combined_sum - combined_mean
-            )
-
-            # Count only pixels that are above zero
-            if (ch1_val + ch2_val) > 0.00001:
-                n_zero += 1
-
-            n += 1
-
-        # Calculate variances - EXACT FIJI calculation
-        ch1_variance = ch1_mean_diff_sum / (n - 1)
-        ch2_variance = ch2_mean_diff_sum / (n - 1)
-        combined_variance = combined_mean_diff_sum / (n - 1.0)
+        # Sample variances (ddof=1), matching FIJI's division by (n - 1)
+        ch1_variance = float(np.var(ch1_flat, ddof=1))
+        ch2_variance = float(np.var(ch2_flat, ddof=1))
+        combined_variance = float(np.var(ch1_flat + ch2_flat, ddof=1))
 
         # EXACT FIJI covariance calculation
         # http://mathworld.wolfram.com/Covariance.html
@@ -519,9 +510,11 @@ class AutoThresholdRegression:
         if self.implementation == Implementation.PCA:
             return self._perform_pca_threshold_regression(stepper, ch1_flat, ch2_flat)
 
-        # Get min and max values for clamping
-        min_val = 0.0  # Assuming typical image data
-        max_val = 65535.0  # Assuming 16-bit data, adjust as needed
+        # Clamp thresholds to each channel's actual data range (generalizes
+        # beyond the original 16-bit [0, 65535] assumption to 8-bit/float data).
+        min_val = 0.0
+        _, ch1_max = self._get_channel_bounds(ch1_flat)
+        _, ch2_max = self._get_channel_bounds(ch2_flat)
 
         ch1_thresh_max = 0.0
         ch2_thresh_max = 0.0
@@ -533,8 +526,8 @@ class AutoThresholdRegression:
             ch2_thresh_max = round(mapper.get_ch2_threshold(stepper.get_value()))
 
             # Clamp thresholds to valid range
-            ch1_thresh_max = self.clamp(ch1_thresh_max, min_val, max_val)
-            ch2_thresh_max = self.clamp(ch2_thresh_max, min_val, max_val)
+            ch1_thresh_max = self.clamp(ch1_thresh_max, min_val, ch1_max)
+            ch2_thresh_max = self.clamp(ch2_thresh_max, min_val, ch2_max)
 
             try:
                 # Calculate Pearson's correlation below thresholds
@@ -605,8 +598,10 @@ class AutoThresholdRegression:
         ch2_flat: np.ndarray,
     ) -> None:
         """Store final results and generate warnings."""
+        # Clamp to each channel's actual data range (was a fixed 16-bit max).
         min_val = 0.0
-        max_val = 65535.0
+        _, ch1_max = self._get_channel_bounds(ch1_flat)
+        _, ch2_max = self._get_channel_bounds(ch2_flat)
 
         # Store regression parameters
         self.auto_threshold_slope = slope
@@ -615,9 +610,9 @@ class AutoThresholdRegression:
 
         # Store final thresholds
         self.ch1_min_threshold = min_val
-        self.ch1_max_threshold = self.clamp(ch1_thresh_max, min_val, max_val)
+        self.ch1_max_threshold = self.clamp(ch1_thresh_max, min_val, ch1_max)
         self.ch2_min_threshold = min_val
-        self.ch2_max_threshold = self.clamp(ch2_thresh_max, min_val, max_val)
+        self.ch2_max_threshold = self.clamp(ch2_thresh_max, min_val, ch2_max)
 
         # Add warnings if values are not in tolerance range
         if (
