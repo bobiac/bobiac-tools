@@ -25,7 +25,6 @@ from bobiac_tools._overlay_labels import (
     _compute_crop,
     _is_categorical,
     _offset_coordinates,
-    _plot_coordinates,
     _stack_channels,
 )
 
@@ -403,7 +402,7 @@ def test_list_of_three_channels_accepted():
     """A list of three grayscale arrays is accepted."""
     rng = np.random.default_rng(2)
     channels = [rng.random((6, 6)) for _ in range(3)]
-    fig, ax = overlay_labels(channels, show=False)
+    fig, _ax = overlay_labels(channels, show=False)
     assert isinstance(fig, Figure)
     plt.close(fig)
 
@@ -504,7 +503,7 @@ def test_3d_image_is_normalized_to_channels():
 def test_rgb_image_not_split_into_channels():
     """An (H, W, 3) RGB array is NOT split (shape[0]=H > 3)."""
     rgb = np.random.default_rng(1).random((6, 6, 3))
-    fig, ax = overlay_labels(rgb, show=False)
+    fig, _ax = overlay_labels(rgb, show=False)
     # Image was treated as a single (H,W,3) RGB array, not 6 separate channels
     assert isinstance(fig, Figure)
     plt.close(fig)
@@ -644,7 +643,7 @@ def test_focus_object_crops_figure():
 def test_focus_object_missing_uses_full_image():
     """focus_object with an absent ID falls back to the full image (crop=None)."""
     image, mask, _df = make_synthetic_data()
-    fig, ax = overlay_labels(image, mask, focus_object=999, show=False)
+    fig, _ax = overlay_labels(image, mask, focus_object=999, show=False)
     assert fig.get_size_inches().tolist() == [8.0, 8.0]
     plt.close(fig)
 

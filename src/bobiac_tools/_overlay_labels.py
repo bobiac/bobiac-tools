@@ -102,7 +102,8 @@ def _plot_coordinates(
     """
     if coords is None:
         return
-    tab10 = list(plt.get_cmap("tab10").colors)
+    cmap = plt.get_cmap("tab10")
+    tab10: list = list(cmap(np.linspace(0, 1, 10)))
     if isinstance(coords, list):
         for i, arr in enumerate(coords):
             arr = np.asarray(arr)
@@ -188,15 +189,15 @@ def _offset_coordinates(
             result.append(arr)
         return result
     elif isinstance(coords, pd.DataFrame):
-        coords = coords.copy()
+        df = coords.copy()
         in_crop = (
-            (coords["x"] >= x0) & (coords["x"] < x1) &
-            (coords["y"] >= y0) & (coords["y"] < y1)
+            (df["x"] >= x0) & (df["x"] < x1) &
+            (df["y"] >= y0) & (df["y"] < y1)
         )
-        coords = coords[in_crop].copy()
-        coords["x"] -= x0
-        coords["y"] -= y0
-        return coords
+        df = df[in_crop].copy()
+        df["x"] -= x0
+        df["y"] -= y0
+        return df
     else:
         coords = np.asarray(coords, dtype=float).copy()
         in_crop = (
@@ -296,7 +297,11 @@ def overlay_labels(
     # --- normalize 3D (C, H, W) arrays to lists of 2-D slices ---
     if isinstance(image, np.ndarray) and image.ndim == 3 and image.shape[0] <= 3:
         image = [image[i] for i in range(image.shape[0])]
-    if isinstance(label_mask, np.ndarray) and label_mask.ndim == 3 and label_mask.shape[0] <= 3:
+    if (
+        isinstance(label_mask, np.ndarray)
+        and label_mask.ndim == 3
+        and label_mask.shape[0] <= 3
+    ):
         label_mask = [label_mask[i] for i in range(label_mask.shape[0])]
 
     # --- build display image ---
@@ -330,7 +335,9 @@ def overlay_labels(
 
     # --- multiple masks: one fixed color per mask ---
     if isinstance(label_mask, list):
-        cropped_masks = [_apply_crop(m, crop) for m in label_mask]
+        cropped_masks = [
+            cast("np.ndarray", _apply_crop(m, crop)) for m in label_mask
+        ]
         h, w = cropped_masks[0].shape
         mask_overlay = np.zeros((h, w, 4))
         for m, color in zip(cropped_masks, _MASK_COLORS):
@@ -358,7 +365,7 @@ def overlay_labels(
         return fig, ax
 
     # --- single mask + optional measurement overlay ---
-    label_mask = _apply_crop(label_mask, crop)
+    label_mask = cast("np.ndarray", _apply_crop(label_mask, crop))
     h, w = label_mask.shape
     _img = img_display if img_display is not None else np.zeros((h, w, 3))
     mask_overlay = np.zeros((h, w, 4), dtype=float)
@@ -382,9 +389,11 @@ def overlay_labels(
     elif is_categorical:
         mask_cmap = mask_cmap or "tab10"
         categories = df[measurement_col].unique()
-        color_map = dict(zip(categories, _categorical_palette(mask_cmap, len(categories))))
+        palette = _categorical_palette(mask_cmap, len(categories))
+        color_map = dict(zip(categories, palette))
         for cell_id, val in zip(df[id_col], df[measurement_col]):
-            mask_overlay[label_mask == cell_id] = [*mcolors.to_rgb(color_map[val]), alpha]
+            rgba = [*mcolors.to_rgb(color_map[val]), alpha]
+            mask_overlay[label_mask == cell_id] = rgba
 
     # --- continuous measurement ---
     else:
