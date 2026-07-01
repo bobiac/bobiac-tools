@@ -39,6 +39,7 @@ dependencies = [
     "tifffile",
     "matplotlib",
     "pandas",
+    "scipy",
 ]
 
 [project.optional-dependencies]
