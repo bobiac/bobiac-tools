@@ -7,7 +7,7 @@ from scipy.spatial import KDTree
 from bobiac_tools._random_points_in_mask import random_points_in_mask
 
 
-def RipleysL(
+def ripleys_l(
     spots: np.ndarray,
     mask: np.ndarray,
     cell_id: int,

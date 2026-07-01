@@ -1,11 +1,11 @@
-"""Tests for ``CrossNN`` (cross nearest-neighbor co-localization test)."""
+"""Tests for ``cross_nn`` (cross nearest-neighbor co-localization test)."""
 
 from __future__ import annotations
 
 import numpy as np
 import pytest
 
-from bobiac_tools._cross_nn import CrossNN
+from bobiac_tools._cross_nn import cross_nn
 
 EXPECTED_KEYS = {
     "nn_AtoB", "nn_BtoA",
@@ -43,21 +43,21 @@ def separated_spots(n: int = 20) -> tuple[np.ndarray, np.ndarray]:
 def test_returns_dict_with_correct_keys():
     mask = make_mask()
     a, b = colocalized_spots()
-    result = CrossNN(a, b, mask, cell_id=1, n_repeats=20, seed=0)
+    result = cross_nn(a, b, mask, cell_id=1, n_repeats=20, seed=0)
     assert set(result.keys()) == EXPECTED_KEYS
 
 
 def test_all_values_are_floats():
     mask = make_mask()
     a, b = colocalized_spots()
-    result = CrossNN(a, b, mask, cell_id=1, n_repeats=20, seed=0)
+    result = cross_nn(a, b, mask, cell_id=1, n_repeats=20, seed=0)
     assert all(isinstance(v, float) for v in result.values())
 
 
 def test_p_values_in_unit_interval():
     mask = make_mask()
     a, b = colocalized_spots()
-    result = CrossNN(a, b, mask, cell_id=1, n_repeats=20, seed=0)
+    result = cross_nn(a, b, mask, cell_id=1, n_repeats=20, seed=0)
     assert 0.0 <= result["pval_AtoB"] <= 1.0
     assert 0.0 <= result["pval_BtoA"] <= 1.0
 
@@ -65,7 +65,7 @@ def test_p_values_in_unit_interval():
 def test_ce_values_are_positive():
     mask = make_mask()
     a, b = colocalized_spots()
-    result = CrossNN(a, b, mask, cell_id=1, n_repeats=20, seed=0)
+    result = cross_nn(a, b, mask, cell_id=1, n_repeats=20, seed=0)
     assert result["ce_AtoB"] > 0.0
     assert result["ce_BtoA"] > 0.0
 
@@ -73,7 +73,7 @@ def test_ce_values_are_positive():
 def test_ce_equals_observed_over_random():
     mask = make_mask()
     a, b = colocalized_spots()
-    r = CrossNN(a, b, mask, cell_id=1, n_repeats=20, seed=0)
+    r = cross_nn(a, b, mask, cell_id=1, n_repeats=20, seed=0)
     assert r["ce_AtoB"] == pytest.approx(r["nn_AtoB"] / r["nn_random_AtoB"])
     assert r["ce_BtoA"] == pytest.approx(r["nn_BtoA"] / r["nn_random_BtoA"])
 
@@ -85,7 +85,7 @@ def test_colocalized_spots_have_low_p_values():
     """Spots in the same region should have small p-values in both directions."""
     mask = make_mask()
     a, b = colocalized_spots(seed=0)
-    result = CrossNN(a, b, mask, cell_id=1, n_repeats=100, seed=0)
+    result = cross_nn(a, b, mask, cell_id=1, n_repeats=100, seed=0)
     assert result["pval_AtoB"] < 0.05
     assert result["pval_BtoA"] < 0.05
 
@@ -94,7 +94,7 @@ def test_colocalized_spots_have_ce_below_one():
     """Co-localized spots have cross Clark-Evans < 1."""
     mask = make_mask()
     a, b = colocalized_spots(seed=0)
-    result = CrossNN(a, b, mask, cell_id=1, n_repeats=100, seed=0)
+    result = cross_nn(a, b, mask, cell_id=1, n_repeats=100, seed=0)
     assert result["ce_AtoB"] < 1.0
     assert result["ce_BtoA"] < 1.0
 
@@ -103,7 +103,7 @@ def test_separated_spots_have_ce_above_one():
     """Spots far apart have cross Clark-Evans > 1 (avoidance)."""
     mask = make_mask()
     a, b = separated_spots()
-    result = CrossNN(a, b, mask, cell_id=1, n_repeats=100, seed=0)
+    result = cross_nn(a, b, mask, cell_id=1, n_repeats=100, seed=0)
     assert result["ce_AtoB"] > 1.0
     assert result["ce_BtoA"] > 1.0
 
@@ -113,7 +113,7 @@ def test_equal_sized_sets_are_nearly_symmetric():
     mask = make_mask()
     rng = np.random.default_rng(5)
     pts = rng.uniform(20, 30, size=(20, 2))
-    result = CrossNN(pts, pts, mask, cell_id=1, n_repeats=10, seed=0)
+    result = cross_nn(pts, pts, mask, cell_id=1, n_repeats=10, seed=0)
     assert result["nn_AtoB"] == pytest.approx(result["nn_BtoA"])
 
 
@@ -123,16 +123,16 @@ def test_equal_sized_sets_are_nearly_symmetric():
 def test_same_seed_gives_same_result():
     mask = make_mask()
     a, b = colocalized_spots()
-    r1 = CrossNN(a, b, mask, cell_id=1, n_repeats=30, seed=3)
-    r2 = CrossNN(a, b, mask, cell_id=1, n_repeats=30, seed=3)
+    r1 = cross_nn(a, b, mask, cell_id=1, n_repeats=30, seed=3)
+    r2 = cross_nn(a, b, mask, cell_id=1, n_repeats=30, seed=3)
     assert r1 == r2
 
 
 def test_different_seeds_give_different_random_nns():
     mask = make_mask()
     a, b = colocalized_spots()
-    r1 = CrossNN(a, b, mask, cell_id=1, n_repeats=30, seed=1)
-    r2 = CrossNN(a, b, mask, cell_id=1, n_repeats=30, seed=2)
+    r1 = cross_nn(a, b, mask, cell_id=1, n_repeats=30, seed=1)
+    r2 = cross_nn(a, b, mask, cell_id=1, n_repeats=30, seed=2)
     assert r1["nn_random_AtoB"] != pytest.approx(r2["nn_random_AtoB"])
 
 
