@@ -58,6 +58,8 @@ def ripleys_l(
     if r_values is None:
         r_max = np.sqrt(area / np.pi) * 0.5
         r_values = np.linspace(0, r_max, 30)
+    else:
+        r_values = np.asarray(r_values)
 
     # Precompute eroded masks once — reused for every simulation. Pad by one
     # pixel of background so the distance transform treats the array edge as
