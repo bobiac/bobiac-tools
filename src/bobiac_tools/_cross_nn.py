@@ -18,8 +18,12 @@ def cross_nn(
     Test co-localization of two spot sets using cross nearest-neighbor distances.
 
     For each point in A the nearest neighbor in B is found (and vice versa).
-    The observed mean cross-NN distances are compared to a null distribution
-    where both sets are independently randomized within the cell mask.
+    For the A→B direction, the null distribution holds A at its observed
+    positions and randomizes only B (and vice versa for B→A) — this tests
+    whether the *real* configuration of one set is closer to the other than
+    a same-sized random configuration would be, controlling for the
+    reference set's density without discarding the query set's real spatial
+    structure.
 
     The two directions (A→B and B→A) can differ when the sets have different
     sizes: a small set is always close to a large one even by chance.
@@ -65,8 +69,8 @@ def cross_nn(
     for i in range(n_repeats):
         rnd_A = random_points_in_mask(mask, cell_label=cell_id, n=n_A, rng=rng)
         rnd_B = random_points_in_mask(mask, cell_label=cell_id, n=n_B, rng=rng)
-        sims_AtoB[i] = KDTree(rnd_B).query(rnd_A, k=1)[0].mean()
-        sims_BtoA[i] = KDTree(rnd_A).query(rnd_B, k=1)[0].mean()
+        sims_AtoB[i] = KDTree(rnd_B).query(spots_A, k=1)[0].mean()
+        sims_BtoA[i] = KDTree(rnd_A).query(spots_B, k=1)[0].mean()
 
     return {
         "nn_AtoB":        nn_AtoB,
