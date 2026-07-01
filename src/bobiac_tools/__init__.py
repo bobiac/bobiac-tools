@@ -21,7 +21,7 @@ from ._manders_image_rotation_test import (
     manders_image_rotation_test_plot,
 )
 from ._manders_image_translation_test import manders_image_translation_randomization
-from ._nn_dist import nn_dist
+from ._nn_dist import nn_dist, nn_dist_target
 from ._overlay_labels import overlay_labels
 from ._pixel_randomization import pixel_randomization
 from ._random_points_in_mask import random_points_in_mask
@@ -41,6 +41,7 @@ __all__ = [
     "manders_image_rotation_test_plot",
     "manders_image_translation_randomization",
     "nn_dist",
+    "nn_dist_target",
     "overlay_labels",
     "pca_auto_threshold",
     "pixel_randomization",

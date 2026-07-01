@@ -67,3 +67,75 @@ def nn_dist(
     p_value = float((rnd_dists <= spot_dist_avg).mean())
 
     return spot_dist_avg, rnd_dist_avg, clark_evans, p_value
+
+
+def nn_dist_target(
+    spots_from: np.ndarray,
+    spots_to: np.ndarray,
+    mask: np.ndarray,
+    cell_id: int,
+    n_repeats: int,
+    seed: int | None = None,
+) -> dict[str, float]:
+    """
+    Test whether `spots_from` lie closer to `spots_to` than expected by chance.
+
+    For each point in `spots_from`, the nearest-neighbor distance to `spots_to`
+    is computed and averaged. This observed mean is compared to a null
+    distribution obtained by randomizing `spots_from` within the cell mask
+    over `n_repeats` simulations, while `spots_to` is held fixed.
+
+    Parameters
+    ----------
+    spots_from : np.ndarray
+        Shape `(n, 2)` array of spot coordinates in (row, col) order. This is
+        the set that is randomized under the null model.
+    spots_to : np.ndarray
+        Shape `(m, 2)` array of target spot coordinates in (row, col) order.
+        Held fixed; nearest-neighbor distances are measured to this set.
+    mask : np.ndarray
+        2D label mask where each cell is identified by a unique integer ID.
+    cell_id : int
+        ID of the cell in `mask` that `spots_from` belongs to.
+    n_repeats : int
+        Number of CSR simulations to run.
+    seed : int | None
+        Random seed for reproducibility. If None, results will vary between runs.
+
+    Returns
+    -------
+    dict with keys:
+        nn_observed : float
+            Mean nearest-neighbor distance from the observed `spots_from` to
+            `spots_to`.
+        nn_random : float
+            Mean of the per-simulation mean nearest-neighbor distances under CSR.
+        ce : float
+            Clark-Evans index: `nn_observed / nn_random`. Values < 1 indicate
+            `spots_from` lies closer to `spots_to` than expected by chance.
+        pval : float
+            Fraction of CSR simulations whose mean NND is <= the observed mean
+            NND. Small values (< 0.05) indicate significant proximity to the
+            target.
+    """
+    n_from = spots_from.shape[0]
+    rng = np.random.default_rng(seed)
+
+    tree_to = KDTree(spots_to)
+    nn_observed = float(tree_to.query(spots_from, k=1)[0].mean())
+
+    rnd_dists = np.empty(n_repeats)
+    for i in range(n_repeats):
+        rnd_points = random_points_in_mask(
+            mask, cell_label=cell_id, n=n_from, rng=rng
+        )
+        rnd_dists[i] = tree_to.query(rnd_points, k=1)[0].mean()
+
+    nn_random = float(rnd_dists.mean())
+
+    return {
+        "nn_observed": nn_observed,
+        "nn_random": nn_random,
+        "ce": nn_observed / nn_random,
+        "pval": float((rnd_dists <= nn_observed).mean()),
+    }
