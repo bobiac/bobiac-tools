@@ -27,13 +27,13 @@ def cross_nn(
     Parameters
     ----------
     spots_A : np.ndarray
-        Shape ``(n, 2)`` array of spot coordinates in (row, col) order.
+        Shape `(n, 2)` array of spot coordinates in (row, col) order.
     spots_B : np.ndarray
-        Shape ``(m, 2)`` array of spot coordinates in (row, col) order.
+        Shape `(m, 2)` array of spot coordinates in (row, col) order.
     mask : np.ndarray
         2D label mask where each cell is identified by a unique integer ID.
     cell_id : int
-        ID of the cell in ``mask`` that both spot sets belong to.
+        ID of the cell in `mask` that both spot sets belong to.
     n_repeats : int
         Number of CSR simulations to run.
     seed : int | None

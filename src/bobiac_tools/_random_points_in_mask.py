@@ -34,7 +34,7 @@ def random_points_in_mask(
     Returns
     -------
     np.ndarray
-        Shape ``(n, 2)`` array of random point coordinates in (row, col) order.
+        Shape `(n, 2)` array of random point coordinates in (row, col) order.
     """
     if rng is None:
         rng = np.random.default_rng()

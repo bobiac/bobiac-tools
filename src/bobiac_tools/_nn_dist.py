@@ -16,7 +16,7 @@ def nn_dist(
     """
     Test spot distribution using nearest-neighbor distances against a CSR null model.
 
-    For each simulation run, ``n_repeats`` random point patterns are generated
+    For each simulation run, `n_repeats` random point patterns are generated
     inside the cell mask and their mean nearest-neighbor distance is computed.
     The Clark-Evans index (observed / random NND) and a Monte Carlo p-value are
     derived from this null distribution.
@@ -24,11 +24,11 @@ def nn_dist(
     Parameters
     ----------
     spots : np.ndarray
-        Shape ``(n, 2)`` array of spot coordinates in (row, col) order.
+        Shape `(n, 2)` array of spot coordinates in (row, col) order.
     mask : np.ndarray
         2D label mask where each cell is identified by a unique integer ID.
     cell_id : int
-        ID of the cell in ``mask`` that spots belong to.
+        ID of the cell in `mask` that spots belong to.
     n_repeats : int
         Number of CSR simulations to run.
     seed : int | None
@@ -41,7 +41,7 @@ def nn_dist(
     rnd_dist_avg : float
         Mean of the per-simulation mean nearest-neighbor distances under CSR.
     clark_evans : float
-        Clark-Evans index: ``spot_dist_avg / rnd_dist_avg``. Values < 1 indicate
+        Clark-Evans index: `spot_dist_avg / rnd_dist_avg`. Values < 1 indicate
         clustering; values > 1 indicate dispersion.
     p_value : float
         Fraction of CSR simulations whose mean NND is <= the observed mean NND.
